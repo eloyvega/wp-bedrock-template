@@ -1,25 +1,16 @@
-FROM php:7.2-apache
-
-RUN apt-get update && \
-    apt-get install -y git wget
-
-RUN docker-php-ext-install mysqli
+FROM composer:1.8 as composer
 
 WORKDIR /app
+COPY . .
+RUN composer install
 
-COPY bin/install-composer.sh .
 
-RUN chmod +x install-composer.sh && \
-    ./install-composer.sh && \
-    mv composer.phar /usr/local/bin/composer
-
-COPY config/bedrock.conf /etc/apache2/sites-available/bedrock.conf
-RUN a2dissite 000-default && a2ensite bedrock
+FROM php:7.2-apache
 
 WORKDIR /var/www/html/
-
-COPY . .
-
-RUN composer install
+RUN docker-php-ext-install mysqli
+COPY --from=composer /app .
+RUN cp config/apache/wordpress.conf /etc/apache2/sites-available/wordpress.conf && \
+    a2dissite 000-default && a2ensite wordpress
 
 CMD ["apache2-foreground"]
